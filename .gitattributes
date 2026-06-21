@@ -1,0 +1,13 @@
+# Normalize line endings for all text files
+* text=auto eol=lf
+
+# Force CRLF for Windows-specific files
+*.sln text eol=crlf
+*.csproj text eol=crlf
+
+# Binary files — no conversion
+*.png binary
+*.jpg binary
+*.ico binary
+*.exe binary
+*.dll binary

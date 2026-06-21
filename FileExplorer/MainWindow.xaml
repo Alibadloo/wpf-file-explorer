@@ -1,0 +1,650 @@
+<Window x:Class="FileExplorer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FileExplorer.ViewModels"
+        xmlns:conv="clr-namespace:FileExplorer.Converters"
+        xmlns:models="clr-namespace:FileExplorer.Models"
+        Title="File Explorer  ·  A.Badloo" Height="800" Width="1300"
+        MinHeight="560" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:BoolToVisibilityConverter x:Key="InverseBoolToVis" TrueValue="Collapsed" FalseValue="Visible"/>
+        <conv:FileSizeConverter x:Key="SizeConv"/>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="F5"     Command="{Binding RefreshCommand}"/>
+        <KeyBinding Key="Back"   Command="{Binding GoBackCommand}"/>
+        <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
+        <KeyBinding Key="F2"     Command="{Binding RenameCommand}"/>
+        <KeyBinding Key="C" Modifiers="Ctrl" Command="{Binding CopyCommand}"/>
+        <KeyBinding Key="X" Modifiers="Ctrl" Command="{Binding CutCommand}"/>
+        <KeyBinding Key="V" Modifiers="Ctrl" Command="{Binding PasteCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="52"/>   <!-- Toolbar        -->
+            <RowDefinition Height="50"/>   <!-- Address bar    -->
+            <RowDefinition Height="*"/>    <!-- Content        -->
+            <RowDefinition Height="28"/>   <!-- Status bar     -->
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════
+             TOOLBAR
+        ══════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SurfaceBrush}">
+            <!-- Gradient accent line at bottom -->
+            <Border.BorderThickness>0,0,0,2</Border.BorderThickness>
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#FF58A6FF" Offset="0"/>
+                    <GradientStop Color="#FF3FB950" Offset="0.6"/>
+                    <GradientStop Color="#FF58A6FF" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+
+            <Grid Margin="6,0">
+                <Grid.ColumnDefinitions>
+                    <!-- Nav buttons -->
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Divider -->
+                    <ColumnDefinition Width="12"/>
+                    <!-- File ops -->
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Divider -->
+                    <ColumnDefinition Width="12"/>
+                    <!-- Edit ops -->
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Spacer -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- Right buttons -->
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Navigation -->
+                <Button Grid.Column="0" Width="38" Height="38"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding GoBackCommand}"
+                        ToolTip="Back  (Alt+Left)">
+                    <TextBlock Text="←" FontSize="16"/>
+                </Button>
+                <Button Grid.Column="1" Width="38" Height="38"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding GoForwardCommand}"
+                        ToolTip="Forward  (Alt+Right)">
+                    <TextBlock Text="→" FontSize="16"/>
+                </Button>
+                <Button Grid.Column="2" Width="38" Height="38"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding GoUpCommand}"
+                        ToolTip="Up">
+                    <TextBlock Text="↑" FontSize="16"/>
+                </Button>
+
+                <!-- Divider -->
+                <Rectangle Grid.Column="3" Width="1" Height="22"
+                            Fill="{DynamicResource BorderBrush}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <!-- New folder / file -->
+                <Button Grid.Column="4" Height="38" Padding="10,0"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding CreateFolderCommand}"
+                        ToolTip="New Folder">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📁" Margin="0,0,5,0"/>
+                        <TextBlock Text="New Folder" FontSize="12"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="5" Height="38" Padding="10,0"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding CreateFileCommand}"
+                        ToolTip="New File">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📄" Margin="0,0,5,0"/>
+                        <TextBlock Text="New File" FontSize="12"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Divider -->
+                <Rectangle Grid.Column="6" Width="1" Height="22"
+                            Fill="{DynamicResource BorderBrush}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <!-- Edit operations -->
+                <Button Grid.Column="7" Height="38" Padding="10,0"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding CopyCommand}" ToolTip="Copy  Ctrl+C">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⎘" Margin="0,0,5,0" FontSize="14"/>
+                        <TextBlock Text="Copy" FontSize="12"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="8" Height="38" Padding="10,0"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding CutCommand}" ToolTip="Cut  Ctrl+X">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="✂" Margin="0,0,5,0" FontSize="13"/>
+                        <TextBlock Text="Cut" FontSize="12"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="9" Height="38" Padding="10,0"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding RenameCommand}" ToolTip="Rename  F2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="✏" Margin="0,0,5,0" FontSize="13"/>
+                        <TextBlock Text="Rename" FontSize="12"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="10" Height="38" Padding="10,0"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding DeleteCommand}" ToolTip="Delete  Del">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🗑" Margin="0,0,5,0" FontSize="13"/>
+                        <TextBlock Text="Delete" FontSize="12"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Spacer -->
+                <Grid Grid.Column="11"/>
+
+                <!-- Theme toggle -->
+                <Button Grid.Column="12" Width="38" Height="38"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding ToggleThemeCommand}"
+                        ToolTip="Toggle Light / Dark mode">
+                    <TextBlock FontSize="16">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="☀"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDarkMode}" Value="False">
+                                        <Setter Property="Text" Value="🌙"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Button>
+
+                <!-- Refresh -->
+                <Button Grid.Column="13" Width="38" Height="38"
+                        Style="{DynamicResource IconButtonStyle}"
+                        Command="{Binding RefreshCommand}"
+                        ToolTip="Refresh  F5">
+                    <TextBlock Text="⟳" FontSize="18"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════════════════════════════
+             ADDRESS BAR  —  fixed text cutoff
+        ══════════════════════════════════════ -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource BackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="230"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- PATH BOX: outer border provides styling, inner TextBox has Style=null -->
+                <Border Grid.Column="0"
+                        x:Name="PathBorder"
+                        Background="{DynamicResource SurfaceVarBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8">
+                    <DockPanel Margin="2,0">
+                        <!-- Path icon -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text=" ›  " FontSize="14" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   VerticalAlignment="Center"/>
+                        <!-- TextBox with Style="{x:Null}" to prevent double-border from theme -->
+                        <TextBox x:Name="PathBox"
+                                 Style="{x:Null}"
+                                 Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 CaretBrush="{DynamicResource AccentBrush}"
+                                 SelectionBrush="{DynamicResource AccentBrush}"
+                                 FontFamily="Segoe UI Variable Text, Segoe UI"
+                                 FontSize="13"
+                                 Padding="0,0,10,0"
+                                 VerticalAlignment="Center"
+                                 KeyDown="PathBox_KeyDown"/>
+                    </DockPanel>
+                </Border>
+
+                <!-- SEARCH BOX -->
+                <Border Grid.Column="2"
+                        Background="{DynamicResource SurfaceVarBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8">
+                    <DockPanel Margin="2,0">
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text=" 🔍 " FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                        <Grid>
+                            <!-- Placeholder text -->
+                            <TextBlock Text="Search files..."
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False"
+                                       FontSize="12" FontFamily="Segoe UI">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchQuery}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBox Style="{x:Null}"
+                                     Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     CaretBrush="{DynamicResource AccentBrush}"
+                                     SelectionBrush="{DynamicResource AccentBrush}"
+                                     FontFamily="Segoe UI"
+                                     FontSize="12"
+                                     Padding="0,0,8,0"
+                                     VerticalAlignment="Center"
+                                     KeyDown="SearchBox_KeyDown"/>
+                        </Grid>
+                    </DockPanel>
+                </Border>
+
+                <!-- SEARCH BUTTON -->
+                <Button Grid.Column="4"
+                        Height="36" Padding="16,0"
+                        Style="{DynamicResource PrimaryButtonStyle}"
+                        Command="{Binding SearchCommand}"
+                        ToolTip="Search (Enter)">
+                    Search
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════════════════════════════
+             MAIN CONTENT  (sidebar + file list)
+        ══════════════════════════════════════ -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230" MinWidth="160" MaxWidth="380"/>
+                <ColumnDefinition Width="1"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ─── LEFT SIDEBAR ─── -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+
+                        <!-- ── Quick Access ── -->
+                        <Border BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                Padding="12,10,12,8">
+                            <StackPanel>
+                                <TextBlock Text="QUICK ACCESS"
+                                           FontSize="9" FontWeight="Bold"
+                                           FontFamily="Segoe UI"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="4,0,0,8"/>
+
+                                <Button Style="{DynamicResource IconButtonStyle}"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="8,7" Margin="0,1"
+                                        Click="NavigateHome_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🏠" Width="20" FontSize="13"/>
+                                        <TextBlock Text="Home" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{DynamicResource IconButtonStyle}"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="8,7" Margin="0,1"
+                                        Click="NavigateDesktop_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🖥" Width="20" FontSize="13"/>
+                                        <TextBlock Text="Desktop" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{DynamicResource IconButtonStyle}"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="8,7" Margin="0,1"
+                                        Click="NavigateDocuments_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📂" Width="20" FontSize="13"/>
+                                        <TextBlock Text="Documents" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{DynamicResource IconButtonStyle}"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="8,7" Margin="0,1"
+                                        Click="NavigateDownloads_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⬇" Width="20" FontSize="13"/>
+                                        <TextBlock Text="Downloads" FontSize="12" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ── Drives ── -->
+                        <Border BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                Padding="12,10,12,8">
+                            <StackPanel>
+                                <TextBlock Text="DRIVES"
+                                           FontSize="9" FontWeight="Bold"
+                                           FontFamily="Segoe UI"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="4,0,0,8"/>
+                                <ItemsControl ItemsSource="{Binding Drives}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:DriveItem}">
+                                            <Button Style="{DynamicResource IconButtonStyle}"
+                                                    HorizontalContentAlignment="Left"
+                                                    Padding="8,7" Margin="0,2"
+                                                    Command="{Binding DataContext.NavigateCommand,
+                                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding RootPath}">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                        <TextBlock Text="💾" Width="20" FontSize="13"/>
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                    <ProgressBar Value="{Binding UsedPercent, Mode=OneWay}"
+                                                                 Maximum="100" Height="2"
+                                                                 Margin="20,0,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ── Folder Tree ── -->
+                        <StackPanel Margin="0,10,0,0">
+                            <TextBlock Text="FOLDERS"
+                                       FontSize="9" FontWeight="Bold"
+                                       FontFamily="Segoe UI"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       Margin="16,0,0,8"/>
+                            <TreeView ItemsSource="{Binding TreeNodes}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Margin="4,0"
+                                      SelectedItemChanged="TreeView_SelectedItemChanged">
+                                <TreeView.ItemTemplate>
+                                    <HierarchicalDataTemplate DataType="{x:Type vm:TreeNodeViewModel}"
+                                                              ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                            <TextBlock Text="📁" FontSize="13"
+                                                       Foreground="{DynamicResource FolderBrush}"
+                                                       Margin="0,0,7,0"/>
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontSize="12" FontFamily="Segoe UI"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.ItemTemplate>
+                                <TreeView.ItemContainerStyle>
+                                    <Style TargetType="TreeViewItem"
+                                           BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                                    </Style>
+                                </TreeView.ItemContainerStyle>
+                            </TreeView>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ─── SPLITTER ─── -->
+            <GridSplitter Grid.Column="1"
+                          Width="1" Background="{DynamicResource BorderBrush}"
+                          HorizontalAlignment="Stretch" Cursor="SizeWE"/>
+
+            <!-- ─── RIGHT: BREADCRUMB + FILE LIST ─── -->
+            <Grid Grid.Column="2" Background="{DynamicResource BackgroundBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Breadcrumb path bar -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="14,5">
+                    <ItemsControl ItemsSource="{Binding PathParts}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text=" › "
+                                               Foreground="{DynamicResource TextMutedBrush}"
+                                               VerticalAlignment="Center"
+                                               FontSize="12"/>
+                                    <Button Content="{Binding}"
+                                            Style="{DynamicResource IconButtonStyle}"
+                                            Padding="5,3"
+                                            FontSize="12"
+                                            Click="BreadcrumbPart_Click"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- File list -->
+                <ListView Grid.Row="1"
+                          x:Name="FileListView"
+                          ItemsSource="{Binding FileItems}"
+                          SelectedItem="{Binding SelectedItem}"
+                          MouseDoubleClick="FileList_DoubleClick"
+                          KeyDown="FileList_KeyDown"
+                          SelectionMode="Extended"
+                          Background="{DynamicResource BackgroundBrush}"
+                          Padding="0,4">
+
+                    <ListView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Open" Command="{Binding OpenItemCommand}" FontWeight="Bold"/>
+                            <Separator/>
+                            <MenuItem Header="Copy         Ctrl+C" Command="{Binding CopyCommand}"/>
+                            <MenuItem Header="Cut           Ctrl+X" Command="{Binding CutCommand}"/>
+                            <MenuItem Header="Paste         Ctrl+V" Command="{Binding PasteCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="Rename      F2"  Command="{Binding RenameCommand}"/>
+                            <MenuItem Header="Delete        Del" Command="{Binding DeleteCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="New Folder" Command="{Binding CreateFolderCommand}"/>
+                            <MenuItem Header="New File"   Command="{Binding CreateFileCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="Properties" Command="{Binding OpenPropertiesCommand}"/>
+                        </ContextMenu>
+                    </ListView.ContextMenu>
+
+                    <ListView.View>
+                        <GridView>
+
+                            <!-- Name column -->
+                            <GridViewColumn Width="320">
+                                <GridViewColumn.Header>
+                                    <GridViewColumnHeader Content="Name" Tag="Name" Click="ColumnHeader_Click"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:FileSystemItem}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Margin="0,0,9,0" VerticalAlignment="Center" FontSize="14">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="📄"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource FileBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                                <Setter Property="Text" Value="📁"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource FolderBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Name}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="13" FontFamily="Segoe UI"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Size column -->
+                            <GridViewColumn Width="100">
+                                <GridViewColumn.Header>
+                                    <GridViewColumnHeader Content="Size" Tag="Size" Click="ColumnHeader_Click"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:FileSystemItem}">
+                                        <TextBlock Text="{Binding SizeFormatted}"
+                                                   HorizontalAlignment="Right"
+                                                   FontSize="12" FontFamily="Segoe UI"
+                                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Type column -->
+                            <GridViewColumn Width="140">
+                                <GridViewColumn.Header>
+                                    <GridViewColumnHeader Content="Type" Tag="Type" Click="ColumnHeader_Click"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:FileSystemItem}">
+                                        <TextBlock Text="{Binding Type}"
+                                                   FontSize="12" FontFamily="Segoe UI"
+                                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Date Modified column -->
+                            <GridViewColumn Width="165">
+                                <GridViewColumn.Header>
+                                    <GridViewColumnHeader Content="Date Modified" Tag="DateModified" Click="ColumnHeader_Click"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:FileSystemItem}">
+                                        <TextBlock Text="{Binding DateModified, StringFormat='{}{0:yyyy-MM-dd  HH:mm}'}"
+                                                   FontSize="12" FontFamily="Segoe Mono, Consolas, Segoe UI"
+                                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+
+                <!-- Searching overlay -->
+                <Grid Grid.Row="1" IsHitTestVisible="False"
+                      Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}">
+                    <Border Background="{DynamicResource BackgroundBrush}" Opacity="0.82"/>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="🔍" FontSize="52" HorizontalAlignment="Center"
+                                   Margin="0,0,0,14"/>
+                        <TextBlock Text="Searching..."
+                                   FontSize="18" FontFamily="Segoe UI"
+                                   FontWeight="Light"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+            </Grid>
+        </Grid>
+
+        <!-- ══════════════════════════════════════
+             STATUS BAR
+        ══════════════════════════════════════ -->
+        <Border Grid.Row="3"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid Margin="14,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           VerticalAlignment="Center"
+                           FontSize="11" FontFamily="Segoe UI"/>
+
+                <CheckBox Grid.Column="1"
+                          Content="Show hidden"
+                          IsChecked="{Binding ShowHiddenFiles}"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          FontSize="11" FontFamily="Segoe UI"
+                          Margin="0,0,16,0"
+                          VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Column="2"
+                           Text="{Binding CurrentPath}"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontSize="11" FontFamily="Segoe Mono, Consolas, Segoe UI"
+                           VerticalAlignment="Center"
+                           MaxWidth="420"
+                           TextTrimming="CharacterEllipsis"/>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>
